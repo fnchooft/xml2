@@ -1,0 +1,5 @@
+/root/item/@id=1
+/root/item=Value One
+/root/item
+/root/item/@id=2
+/root/item=Value Two

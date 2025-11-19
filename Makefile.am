@@ -10,3 +10,9 @@ csv2_SOURCES = csv2.c
 install-exec-hook:
 	ln -sf $(DESTDIR)$(bindir)/xml2 $(DESTDIR)$(bindir)/html2
 	ln -sf $(DESTDIR)$(bindir)/2xml $(DESTDIR)$(bindir)/2html
+
+
+TESTS = tests/run_xml2.sh tests/run_2xml.sh tests/run_csv.sh
+
+EXTRA_DIST =  tests/input.xml tests/expected.txt
+EXTRA_DIST += tests/expected-normal.xml tests/expected-format.xml
