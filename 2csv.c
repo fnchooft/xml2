@@ -4,8 +4,11 @@
 #include <string.h>
 
 void usage(void) {
-	fputs("usage: 2csv [-q quote] [-d comma] "
-	      "record field [field ...] < in > csv\n",stderr);
+	fputs("usage: 2csv [-q quote] [-f] [-d comma] "
+	      "record field [field ...] < in > csv\n\n"
+		  "-q: character will only be used if value contains delimiter\n"
+		  "-f: print fields as first line\n"
+		  ,stderr);
 	exit(2);
 }
 
@@ -32,11 +35,13 @@ void dump(int num,char **vec,const char *q,const char *d) {
 }
 
 int main(int argc,char *argv[]) {
+	int print_fields = 0;
 	int i,arg,alloc,len = 0,record_len,*field_len;
 	char *buffer = malloc(alloc = 4096),**fields;
 	const char *record,*quote = "\"",*delimiter = ",";
 
-	while (EOF != (arg = getopt(argc,argv,"q:d:"))) switch (arg) {
+	while (EOF != (arg = getopt(argc,argv,"fq:d:"))) switch (arg) {
+	case 'f': print_fields = 1; break;
 	case 'q': quote = optarg; break;
 	case 'd': delimiter = optarg; break;
 	case '?': usage();
@@ -50,9 +55,18 @@ int main(int argc,char *argv[]) {
 
 	fields = malloc(argc * sizeof(*fields));
 	field_len = malloc(argc * sizeof(*field_len));
-	for (i = 0; i < argc; ++i) {
-		field_len[i] = strlen(argv[i]);
-		fields[i] = NULL;
+
+	if(print_fields == 1){
+		for (i = 0; i < argc; ++i) {
+			field_len[i] = strlen(argv[i]);
+			fields[i] = strdup(argv[i]);
+		}
+		dump(argc,fields,quote,delimiter);
+	} else {
+		for (i = 0; i < argc; ++i) {
+			field_len[i] = strlen(argv[i]);
+			fields[i] = NULL;
+		}
 	}
 
 	while (NULL != fgets(buffer + len,alloc - len,stdin)) {
