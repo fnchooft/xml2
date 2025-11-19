@@ -28,6 +28,9 @@
 
 int do_html;
 int in_tag = 0;
+int do_format = 0;
+int indent_level = 0;
+int text_was_printed = 0; /* New: Flag to track if text was just output */
 
 struct node 
 {
@@ -36,6 +39,15 @@ struct node
 };
 
 struct node *root = NULL;
+
+static void print_indent()
+{
+	if (!do_format) return;
+	int i;
+	for (i = 0; i < indent_level; i++) {
+		fputs("  ", stdout);
+	}
+}
 
 static void finish_tag()
 {
@@ -63,6 +75,12 @@ static void enter(const char *name)
 
 	finish_tag();
 
+	if (do_format && root != NULL) {
+		putchar('\n');
+	}
+	print_indent();
+
+
 	switch (name[0]) {
 	case '!':
 		if ('\0' != name[1]) {
@@ -84,10 +102,19 @@ static void enter(const char *name)
 		in_tag = 1;
 		break;
 	}
+	
+	if (do_format) {
+		switch(name[0]) {
+		case '@': case '?': case '!': break;
+		default: indent_level++;
+		}
+	}
 }
 
 static void leave(const char *name)
 {
+	int was_in_tag = in_tag;
+
 	switch (name[0]) {
 	case '@':
 		assert(in_tag);
@@ -100,16 +127,24 @@ static void leave(const char *name)
 		fputs("?>",stdout);
 		break;
 	default:
-		if (!do_html && in_tag)
+		if (do_format) indent_level--;
+
+		if (!do_html && was_in_tag)
 			fputs("/>",stdout);
 		else {
 			const htmlElemDesc *elem = NULL;
 			if (do_html) elem = htmlTagLookup((xmlChar *) name);
 			finish_tag();
 			if (NULL == elem || (!elem->endTag && !elem->empty)) {
+				/* Modified: Check text_was_printed flag before adding newline */
+				if (do_format && !was_in_tag && !text_was_printed) {
+					putchar('\n');
+					print_indent();
+				}
 				fputs("</",stdout);
 				fputs(name,stdout);
 				putchar('>');
+				text_was_printed = 0; /* Reset flag after any closing tag */
 			}
 		}
 		in_tag = 0;
@@ -145,6 +180,8 @@ static void chars(const char *stuff,const char *context)
 #endif
 		}
 	}
+	/* New: Set flag if we just printed element text (not attribute text) */
+	if (context[0] != '@') text_was_printed = 1;
 }
 
 static void release(struct node **ptr)
@@ -214,12 +251,18 @@ int main(int argc,char *argv[])
 	const char *name = strrchr(argv[0],'/');
 	if (NULL == name) name = argv[0]; else ++name;
 
-	     if (1 == argc && !strcmp(name,"2html")) do_html = 1;
-	else if (1 == argc && !strcmp(name,"2xml"))  do_html = 0;
-	else {
-		fputs("usage: [2xml|2html] < in > [xml|html]\n",stderr);
+	if (!strcmp(name,"2html")) do_html = 1;
+	
+	int arg;
+	while (-1 != (arg = getopt(argc, argv, "f"))) switch(arg) {
+	case 'f':
+		do_format = 1;
+		break;
+	case '?':
+		fputs("usage: [2xml|2html] [-f] < in > [xml|html]\n",stderr);
 		return 2;
 	}
+
 
 	while ((num = read(0,len + buffer,alloc - len)) > 0) {
 		char *end = buffer + len + num,*ptr = buffer,*eol;

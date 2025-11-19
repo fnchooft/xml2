@@ -7,6 +7,8 @@
 int do_first = 0;
 const char *quote = "";
 const char *delimiter = ",";
+const char *path_prefix = "file/record";
+const char *namespace_uri = NULL; // New: To store the namespace URI
 
 int num_fields = 0;
 int recno = 0;
@@ -53,7 +55,7 @@ void field(int num,const char *begin,const char *end) {
 		*ptr++ = '\0';
 		field_names[num] = name;
 	} else {
-		fputs("/file/record/",stdout);
+		fprintf(stdout,"/%s/",path_prefix);
 		if (num < num_fields && NULL != field_names[num])
 			fputs(field_names[num],stdout);
 		else
@@ -65,8 +67,8 @@ void field(int num,const char *begin,const char *end) {
 void line(const char *l) {
 	int num = 0;
 	if (!do_first) {
-		fputs("/file/record\n",stdout);
-		printf("/file/record/@num=%d\n",recno++);
+		fprintf(stdout,"/%s\n",path_prefix);
+		fprintf(stdout,"/%s/@num=%d\n",path_prefix, recno++);
 	}
 	for (;;) {
 		if (NULL != strchr(quote,*l)) {
@@ -90,12 +92,16 @@ int main(int argc,char *argv[]) {
 	int arg,num,alloc,len = 0;
 	char *buffer = malloc(alloc = 4096);
 
-	while (EOF != (arg = getopt(argc,argv,"fq:d:"))) switch (arg) {
+	// Modified: Added 'n:' to getopt string
+	while (EOF != (arg = getopt(argc,argv,"fq:d:p:n:"))) switch (arg) {
 	case 'f': ++do_first; break;
 	case 'q': quote = optarg; break;
 	case 'd': delimiter = optarg; break;
+	case 'p': path_prefix = optarg; break;
+	case 'n': namespace_uri = optarg; break; // New: Handle the -n option
 	case '?':
-		fputs("usage: csv2 [-f] [-q quote] [-d comma] < csv > out\n",
+		// Modified: Updated usage message
+		fputs("usage: csv2 [-f] [-q quote] [-d comma] [-p path] [-n namespace] < csv > out\n",
 		      stderr);
 		return 2;
 	}
@@ -104,6 +110,17 @@ int main(int argc,char *argv[]) {
 		fprintf(stderr,"unexpected argument: \"%s\"\n",argv[optind]);
 		return 2;
 	}
+
+    // New: Logic to print the namespace attribute line
+    if (namespace_uri != NULL) {
+        // Find the length of the first component of the path_prefix
+        size_t root_len = strcspn(path_prefix, "/");
+        if (root_len > 0) {
+            // Print the attribute line for the root element
+            fprintf(stdout, "/%.*s/@xmlns=%s\n", (int)root_len, path_prefix, namespace_uri);
+        }
+    }
+
 
 	while ((num = read(0,len + buffer,alloc - len)) > 0) {
 		char *end = buffer + len + num,*ptr = buffer,*eol;
