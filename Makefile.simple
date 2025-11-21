@@ -1,0 +1,30 @@
+# Standard installation paths
+PREFIX ?= /usr/local
+bindir = $(PREFIX)/bin
+
+# Standard compile path - for most distros
+export CPATH := /usr/include/libxml2:/usr/local/include/libxml2:$(CPATH)
+
+LDLIBS = -lxml2
+BIN = 2csv 2xml csv2 xml2
+
+all: $(BIN)
+
+clean:
+	$(RM) $(BIN)
+
+# The install target
+.PHONY: install
+
+install: $(BIN)
+	@echo "Installing to $(bindir)..."
+# 1. Create the directory if it doesn't exist
+	install -d $(DESTDIR)$(bindir)
+# 2. Install the executable with 755 permissions
+	install -m 755 $(BIN) $(DESTDIR)$(bindir)
+
+.PHONY: uninstall
+uninstall:
+	@echo "Uninstalling..."
+# Remove all files defined in $(BIN) from the target directory
+	rm -f $(addprefix $(DESTDIR)$(bindir)/, $(BIN))
